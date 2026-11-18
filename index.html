@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduLMS Pro — Hệ thống Quản lý Học tập &amp; AI Giáo dục</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="maintenance-banner" class="maintenance-banner hidden" role="alert">
+    <i data-lucide="alert-triangle"></i>
+    <span>Hệ thống EduLMS Pro đang trong chế độ bảo trì định kỳ. Chỉ Quản trị viên mới có thể thao tác.</span>
+  </div>
+
+  <!-- MÀN HÌNH ĐĂNG NHẬP -->
+  <div id="auth-screen" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-icon"><i data-lucide="graduation-cap"></i></div>
+        <div>
+          <h1>EduLMS Pro</h1>
+          <p>Nền tảng Quản lý Học tập &amp; Trợ lý AI</p>
+        </div>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <div class="form-group">
+          <label for="login-username">Tên đăng nhập / Mã GV / Mã HS</label>
+          <input type="text" id="login-username" name="username" placeholder="VD: admin, GV001, HS2026001" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Mật khẩu</label>
+          <input type="password" id="login-password" name="password" placeholder="Mặc định: 123456" required />
+        </div>
+        <div id="login-error" class="error-text hidden"></div>
+        <button type="submit" class="btn btn-primary btn-block">
+          <i data-lucide="log-in"></i> Đăng nhập hệ thống
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <small>Tài khoản mẫu (mật khẩu <code>123456</code>): <code>admin</code> · <code>GV001</code> · <code>HS2026001</code></small>
+      </div>
+    </div>
+  </div>
+
+  <!-- KHUNG ỨNG DỤNG CHÍNH -->
+  <div id="app-shell" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <i data-lucide="graduation-cap"></i>
+          <span>EduLMS <strong>Pro</strong></span>
+        </div>
+        <button type="button" id="sidebar-close-btn" class="icon-btn mobile-only" aria-label="Đóng menu">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="user-role-badge" id="sidebar-profile-trigger" style="cursor:pointer;" title="Bấm để xem hồ sơ & đổi mật khẩu">
+        <span id="current-role-pill" class="badge badge-primary">GIÁO VIÊN</span>
+        <div id="current-user-name" class="user-fullname">Nguyễn Văn A</div>
+        <small class="muted-text">Hồ sơ &amp; Đổi mật khẩu &rarr;</small>
+      </div>
+
+      <nav id="sidebar-nav" class="sidebar-nav" aria-label="Menu chính"></nav>
+
+      <div class="sidebar-footer">
+        <button type="button" id="open-ai-tutor-btn" class="btn btn-ai btn-block">
+          <i data-lucide="sparkles"></i> Trợ lý AI Gemini
+        </button>
+        <button type="button" id="logout-btn" class="btn btn-ghost btn-block">
+          <i data-lucide="log-out"></i> Đăng xuất
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-container">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button type="button" id="sidebar-toggle-btn" class="icon-btn mobile-only" aria-label="Mở menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 id="page-title">Tổng quan hệ thống</h2>
+        </div>
+
+        <div class="topbar-right">
+          <div class="academic-year-chip">
+            <i data-lucide="calendar"></i>
+            <span>Năm học 2026–2027</span>
+          </div>
+
+          <div class="notification-wrapper">
+            <button type="button" id="notif-bell-btn" class="icon-btn" aria-label="Thông báo">
+              <i data-lucide="bell"></i>
+              <span id="notif-unread-badge" class="notif-dot hidden">0</span>
+            </button>
+            <div id="notif-dropdown" class="dropdown-panel hidden">
+              <div class="dropdown-header">
+                <strong>Thông báo mới</strong>
+                <button type="button" id="mark-all-read-btn" class="link-btn">Đánh dấu đã đọc</button>
+              </div>
+              <div id="notif-list" class="dropdown-body"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main id="view-container" class="content-area">
+        <!-- 1. TỔNG QUAN -->
+        <section id="view-dashboard" class="view-section">
+          <div id="kpi-grid" class="kpi-grid"></div>
+          <div class="dashboard-charts-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Biểu đồ Phân bố Điểm số &amp; Tiến độ Học tập</h3>
+              </div>
+              <div class="card-body chart-box">
+                <canvas id="main-analytics-chart"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3>Lịch học &amp; Hạn nộp bài sắp tới</h3>
+              </div>
+              <div class="card-body">
+                <ul id="upcoming-deadlines-list" class="timeline-list"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. QUẢN TRỊ TÀI KHOẢN (ADMIN) -->
+        <section id="view-admin-users" class="view-section hidden">
+          <div class="toolbar">
+            <div class="toolbar-actions">
+              <button type="button" id="btn-new-user-modal" class="btn btn-primary">
+                <i data-lucide="user-plus"></i> Tạo tài khoản
+              </button>
+              <label class="btn btn-secondary file-upload-label">
+                <i data-lucide="file-spreadsheet"></i> Nhập CSV hàng loạt
+                <input type="file" id="csv-users-input" accept=".csv" hidden />
+              </label>
+              <button type="button" id="btn-export-sql" class="btn btn-secondary">
+                <i data-lucide="database-backup"></i> Sao lưu SQL
+              </button>
+            </div>
+            <label class="switch-control">
+              <input type="checkbox" id="toggle-maintenance" />
+              <span>Chế độ bảo trì hệ thống</span>
+            </label>
+          </div>
+
+          <div class="card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Tài khoản</th>
+                    <th>Họ và tên</th>
+                    <th>Vai trò</th>
+                    <th>Email</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. QUẢN LÝ LỚP HỌC -->
+        <section id="view-classes" class="view-section hidden">
+          <div class="toolbar">
+            <div class="toolbar-actions">
+              <button type="button" id="btn-create-class" class="btn btn-primary role-teacher-admin">
+                <i data-lucide="plus-circle"></i> Tạo lớp học mới
+              </button>
+              <div class="join-class-box role-student">
+                <input type="text" id="student-join-code" placeholder="Nhập mã tham gia lớp (VD: 8F2A91C0)" />
+                <button type="button" id="btn-join-class" class="btn btn-primary">Tham gia lớp</button>
+              </div>
+            </div>
+          </div>
+          <div id="classes-grid" class="cards-grid"></div>
+
+          <!-- Bảng phân lớp & danh sách học sinh của lớp -->
+          <div id="class-members-panel" class="card mt-20 hidden" style="border-color:#93c5fd;">
+            <div class="card-header">
+              <h3 id="class-members-title">Danh sách &amp; Phân lớp Học sinh</h3>
+              <button type="button" id="btn-close-class-members" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body">
+              <div class="role-teacher-admin" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;">
+                <div style="flex:1;min-width:260px;">
+                  <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">
+                    Chọn học sinh để phân vào lớp (giữ Ctrl để chọn nhiều học sinh):
+                  </label>
+                  <select id="assign-students-select" multiple size="4" style="width:100%;padding:6px;"></select>
+                </div>
+                <button type="button" id="btn-assign-students-submit" class="btn btn-primary">
+                  <i data-lucide="user-plus"></i> Thêm vào lớp học
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mã HS</th>
+                      <th>Họ và tên học sinh</th>
+                      <th>Email</th>
+                      <th>Trạng thái</th>
+                      <th class="role-teacher-admin">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="class-members-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. TÀI LIỆU & VIDEO AI -->
+        <section id="view-materials" class="view-section hidden">
+          <div class="toolbar">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="material-search-input" placeholder="Tìm tài liệu theo tên, chương, môn học..." />
+            </div>
+            <div class="toolbar-actions role-teacher-admin">
+              <button type="button" id="btn-open-ai-video-studio" class="btn btn-ai">
+                <i data-lucide="video"></i> Tạo Video Bài giảng AI
+              </button>
+            </div>
+          </div>
+
+          <div id="ai-video-studio-card" class="card ai-studio-panel hidden">
+            <div class="card-header">
+              <h3><i data-lucide="clapperboard"></i> Studio Tạo Video Bài Giảng Trí Tuệ Nhân Tạo</h3>
+              <button type="button" id="btn-close-ai-video-studio" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body grid-2-col">
+              <form id="ai-video-form">
+                <div class="form-group">
+                  <label>Môn học</label>
+                  <select id="ai-video-subject">
+                    <option value="Tin học">Tin học</option>
+                    <option value="Toán học">Toán học</option>
+                    <option value="Ngữ văn">Ngữ văn</option>
+                    <option value="Tiếng Anh">Tiếng Anh</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Tiêu đề bài giảng</label>
+                  <input type="text" id="ai-video-title" placeholder="VD: Thuật toán sắp xếp nổi bọt (Bubble Sort)" required />
+                </div>
+                <div class="form-group">
+                  <label>Nội dung trọng tâm</label>
+                  <textarea id="ai-video-outline" rows="4" placeholder="Nhập các ý chính để AI sinh kịch bản và video..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-ai">
+                  <i data-lucide="wand-2"></i> Sinh Video &amp; Kịch bản AI
+                </button>
+              </form>
+              <div id="ai-video-result-box" class="ai-output-preview">
+                <p class="muted-text">Kịch bản phân cảnh (Storyboard) và tệp video bài giảng AI sẽ hiển thị tại đây.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="materials-grid" class="cards-grid"></div>
+        </section>
+
+        <!-- 5. BÀI TẬP & TRÌNH BIÊN DỊCH SANDBOX ĐA NGÔN NGỮ -->
+        <section id="view-assignments" class="view-section hidden">
+          <div class="toolbar">
+            <h3>Danh sách Bài tập &amp; Thực hành Lập trình</h3>
+            <button type="button" id="btn-create-assignment" class="btn btn-primary role-teacher-admin">
+              <i data-lucide="file-plus"></i> Giao bài tập mới
+            </button>
+          </div>
+
+          <!-- Biểu mẫu giao bài tập mới dành cho Giáo viên -->
+          <div id="create-assignment-panel" class="card mb-20 hidden" style="margin-bottom:20px;border-color:#93c5fd;">
+            <div class="card-header">
+              <h3><i data-lucide="file-plus"></i> Giao bài tập mới cho lớp học</h3>
+              <button type="button" id="btn-close-assignment-panel" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body">
+              <form id="create-assignment-form" class="grid-2-col">
+                <div>
+                  <div class="form-group">
+                    <label>Tên bài tập</label>
+                    <input type="text" id="asg-title" placeholder="VD: Thực hành Cấu trúc lặp và Mảng" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Lớp nhận bài</label>
+                    <select id="asg-class-id"></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Môn học</label>
+                    <select id="asg-subject-id"></select>
+                  </div>
+                </div>
+                <div>
+                  <div class="form-group">
+                    <label>Hình thức nộp bài</label>
+                    <select id="asg-type">
+                      <option value="CODE">Lập trình trực tiếp (Code Sandbox)</option>
+                      <option value="TEXT">Nhập văn bản / Tự luận trực tuyến</option>
+                      <option value="LINK">Nộp liên kết (GitHub / Google Drive)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Hạn nộp bài</label>
+                    <input type="datetime-local" id="asg-due-at" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Điểm tối đa</label>
+                    <input type="number" id="asg-max-score" value="10" min="1" max="100" step="0.5" required />
+                  </div>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                  <div class="form-group">
+                    <label>Nội dung yêu cầu &amp; Tiêu chí đánh giá</label>
+                    <textarea id="asg-instructions" rows="3" placeholder="Mô tả chi tiết yêu cầu bài tập..." required></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i data-lucide="send"></i> Xuất bản &amp; Giao bài tập
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="assignments-list" class="cards-grid"></div>
+
+          <!-- Khu vực xem và chấm bài nộp (Giáo viên) -->
+          <div id="grading-submissions-panel" class="card mt-20 hidden">
+            <div class="card-header">
+              <h3 id="grading-panel-title">Danh sách bài nộp của học sinh</h3>
+              <button type="button" id="btn-close-grading-panel" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body" id="grading-submissions-body"></div>
+          </div>
+
+          <!-- Trình biên dịch & Chạy thử Code Sandbox đa ngôn ngữ -->
+          <div id="code-sandbox-card" class="card mt-20">
+            <div class="card-header">
+              <h3><i data-lucide="terminal"></i> Trình biên dịch &amp; Chạy thử Code Sandbox Đa ngôn ngữ</h3>
+              <div class="sandbox-controls">
+                <select id="sandbox-language">
+                  <option value="python">Python 3 (Trình thông dịch thực)</option>
+                  <option value="html">HTML / CSS / JS (Live Preview)</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="cpp">C++ 17</option>
+                  <option value="c">C (ANSI C)</option>
+                  <option value="java">Java 17</option>
+                </select>
+                <button type="button" id="btn-run-sandbox" class="btn btn-success">
+                  <i data-lucide="play"></i> Biên dịch &amp; Chạy
+                </button>
+              </div>
+            </div>
+            <div class="card-body sandbox-grid">
+              <div class="editor-pane">
+                <label>Mã nguồn chương trình</label>
+                <textarea id="sandbox-code-editor" class="code-textarea" spellcheck="false">def giai_thua(n):
+    return 1 if n <= 1 else n * giai_thua(n - 1)
+
+print("Kết quả 5! =", giai_thua(5))</textarea>
+              </div>
+              <div class="io-pane">
+                <label>Dữ liệu đầu vào (STDIN - cách nhau bởi dấu cách hoặc xuống dòng)</label>
+                <textarea id="sandbox-stdin" class="code-textarea small" placeholder="VD: 5 10"></textarea>
+                <label class="mt-10">Kết quả thực thi (STDOUT / HTML Preview)</label>
+                <pre id="sandbox-output" class="console-output">Sẵn sàng biên dịch &amp; thực thi mã nguồn...</pre>
+                <iframe id="sandbox-html-preview" class="hidden" style="width:100%;height:190px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;"></iframe>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. KIỂM TRA TRỰC TUYẾN, AI TẠO ĐỀ & GIÁM SÁT PHÒNG THI -->
+        <section id="view-exams" class="view-section hidden">
+          <div class="toolbar">
+            <h3>Hệ thống Kiểm tra Trực tuyến &amp; Ngân hàng Câu hỏi</h3>
+            <div class="toolbar-actions role-teacher-admin">
+              <button type="button" id="btn-open-ai-question-panel" class="btn btn-ai">
+                <i data-lucide="brain-circuit"></i> AI Tạo Câu hỏi &amp; Ngân hàng đề
+              </button>
+              <button type="button" id="btn-open-create-exam-panel" class="btn btn-primary">
+                <i data-lucide="clipboard-check"></i> Tạo đề thi mới
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel AI tạo câu hỏi trắc nghiệm và lưu vào Ngân hàng đề -->
+          <div id="ai-question-panel" class="card hidden" style="margin-bottom:20px;border-color:#c4b5fd;">
+            <div class="card-header">
+              <h3><i data-lucide="sparkles"></i> AI Sinh Câu hỏi Trắc nghiệm &amp; Lưu Ngân hàng đề</h3>
+              <button type="button" id="btn-close-ai-question-panel" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body grid-2-col">
+              <form id="ai-question-form">
+                <div class="form-group">
+                  <label>Môn học</label>
+                  <select id="ai-q-subject"></select>
+                </div>
+                <div class="form-group">
+                  <label>Chủ đề / Nội dung kiến thức</label>
+                  <textarea id="ai-q-topic" rows="3" placeholder="VD: Vòng lặp for và while trong Python, hoặc Hàm số bậc hai..." required></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Số lượng câu hỏi &amp; Mức độ</label>
+                  <div style="display:flex;gap:10px;">
+                    <input type="number" id="ai-q-count" value="3" min="1" max="10" />
+                    <select id="ai-q-level">
+                      <option value="NHAN_BIET">Nhận biết</option>
+                      <option value="THONG_HIEU" selected>Thông hiểu</option>
+                      <option value="VAN_DUNG">Vận dụng</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-ai">
+                  <i data-lucide="wand-2"></i> Sinh bộ câu hỏi bằng AI
+                </button>
+              </form>
+              <div>
+                <div id="ai-generated-questions-box" class="ai-output-preview">
+                  <p class="muted-text">Bộ câu hỏi do AI sinh ra sẽ hiển thị tại đây để bạn kiểm tra và lưu vào Ngân hàng đề.</p>
+                </div>
+                <button type="button" id="btn-save-ai-questions" class="btn btn-success mt-10 hidden">
+                  <i data-lucide="save"></i> Lưu tất cả vào Ngân hàng câu hỏi
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel Tạo đề thi mới từ Ngân hàng câu hỏi -->
+          <div id="create-exam-panel" class="card hidden" style="margin-bottom:20px;border-color:#93c5fd;">
+            <div class="card-header">
+              <h3><i data-lucide="clipboard-list"></i> Tạo Đề kiểm tra Trực tuyến Mới</h3>
+              <button type="button" id="btn-close-create-exam-panel" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="card-body">
+              <form id="create-exam-form">
+                <div class="grid-2-col">
+                  <div>
+                    <div class="form-group">
+                      <label>Tên kỳ thi / bài kiểm tra</label>
+                      <input type="text" id="exam-new-title" placeholder="VD: Kiểm tra 15 phút Tin học Chương 2" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Lớp thi &amp; Môn học</label>
+                      <div style="display:flex;gap:10px;">
+                        <select id="exam-new-class"></select>
+                        <select id="exam-new-subject"></select>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="form-group">
+                      <label>Thời gian làm bài (phút)</label>
+                      <input type="number" id="exam-new-duration" value="30" min="5" max="180" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Quy chế Trợ lý AI trong phòng thi</label>
+                      <select id="exam-new-ai-allowed">
+                        <option value="false">Khóa Trợ lý AI khi học sinh đang thi</option>
+                        <option value="true">Cho phép sử dụng Trợ lý AI (Bài luyện tập)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Chọn câu hỏi từ Ngân hàng câu hỏi:</label>
+                  <div id="question-bank-checklist" style="max-height:180px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:10px;"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  <i data-lucide="check-circle"></i> Xuất bản Đề kiểm tra
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div id="exams-list" class="cards-grid"></div>
+
+          <!-- Bảng giám sát phòng thi trực tiếp dành cho Giáo viên -->
+          <div id="live-proctoring-panel" class="card mt-20 role-teacher-admin">
+            <div class="card-header">
+              <h3><i data-lucide="shield-alert"></i> Giám sát Phòng thi Trực tuyến (Anti-Cheating Live)</h3>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <select id="proctoring-exam-select" style="width:auto;min-width:240px;"></select>
+                <button type="button" id="btn-refresh-proctoring" class="btn btn-secondary">Làm mới</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Mã HS</th>
+                    <th>Học sinh</th>
+                    <th>Trạng thái</th>
+                    <th>Chuyển tab</th>
+                    <th>Thoát toàn màn hình</th>
+                    <th>Điểm</th>
+                    <th>Nhật ký giám sát</th>
+                  </tr>
+                </thead>
+                <tbody id="proctoring-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. BẢNG ĐIỂM -->
+        <section id="view-grades" class="view-section hidden">
+          <div class="toolbar">
+            <h3>Bảng điểm Tổng hợp &amp; Lịch sử Đánh giá</h3>
+            <button type="button" id="btn-export-grades-csv" class="btn btn-secondary">
+              <i data-lucide="download"></i> Xuất bảng điểm (Excel/CSV)
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Học sinh</th>
+                    <th>Lớp</th>
+                    <th>Môn học</th>
+                    <th>Đầu điểm / Bài thi</th>
+                    <th>Điểm số</th>
+                    <th>Nhận xét giáo viên</th>
+                  </tr>
+                </thead>
+                <tbody id="grades-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. HỒ SƠ CÁ NHÂN & ĐỔI MẬT KHẨU -->
+        <section id="view-profile" class="view-section hidden">
+          <div class="grid-2-col">
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="user-circle"></i> Thông tin Cá nhân</h3>
+              </div>
+              <div class="card-body">
+                <form id="profile-update-form">
+                  <div class="form-group">
+                    <label>Tên đăng nhập / Mã định danh</label>
+                    <input type="text" id="prof-username" disabled />
+                  </div>
+                  <div class="form-group">
+                    <label>Vai trò hệ thống</label>
+                    <input type="text" id="prof-role" disabled />
+                  </div>
+                  <div class="form-group">
+                    <label>Họ và tên hiển thị</label>
+                    <input type="text" id="prof-fullname" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Địa chỉ Email</label>
+                    <input type="email" id="prof-email" placeholder="example@edulms.edu.vn" />
+                  </div>
+                  <div class="form-group">
+                    <label>Số điện thoại liên hệ</label>
+                    <input type="text" id="prof-phone" placeholder="09xxxxxxxx" />
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i> Lưu thông tin cá nhân
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="key-round"></i> Đổi Mật khẩu Đăng nhập</h3>
+              </div>
+              <div class="card-body">
+                <form id="change-password-form">
+                  <div class="form-group">
+                    <label>Mật khẩu hiện tại</label>
+                    <input type="password" id="pwd-old" required placeholder="Nhập mật khẩu đang sử dụng..." />
+                  </div>
+                  <div class="form-group">
+                    <label>Mật khẩu mới (tối thiểu 6 ký tự)</label>
+                    <input type="password" id="pwd-new" required minlength="6" placeholder="Nhập mật khẩu mới..." />
+                  </div>
+                  <div class="form-group">
+                    <label>Xác nhận mật khẩu mới</label>
+                    <input type="password" id="pwd-confirm" required minlength="6" placeholder="Nhập lại mật khẩu mới..." />
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i data-lucide="shield-check"></i> Cập nhật mật khẩu mới
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- PHÒNG THI TOÀN MÀN HÌNH -->
+  <div id="exam-room-overlay" class="exam-overlay hidden">
+    <header class="exam-topbar">
+      <div>
+        <h3 id="exam-room-title">Bài kiểm tra định kỳ</h3>
+        <small id="exam-variant-label">Mã đề: MD-101 · Tự động lưu mỗi 5 giây</small>
+      </div>
+      <div class="exam-status-bar">
+        <span id="exam-autosave-status" class="badge badge-neutral">Đã lưu đồng bộ</span>
+        <span id="exam-proctor-counter" class="badge badge-warning">Chuyển tab: 0</span>
+        <div id="exam-countdown-timer" class="timer-box">45:00</div>
+        <button type="button" id="btn-submit-exam" class="btn btn-primary">Nộp bài thi</button>
+      </div>
+    </header>
+    <div id="exam-questions-container" class="exam-body"></div>
+  </div>
+
+  <!-- NGĂN KÉO TRỢ LÝ AI GEMINI -->
+  <aside id="ai-drawer" class="ai-drawer hidden" aria-label="Trợ lý AI">
+    <div class="ai-drawer-header">
+      <div>
+        <strong><i data-lucide="sparkles"></i> Trợ lý AI EduLMS</strong>
+        <small id="ai-lock-indicator" class="block">Sẵn sàng hỗ trợ dạy và học</small>
+      </div>
+      <button type="button" id="close-ai-drawer-btn" class="icon-btn"><i data-lucide="x"></i></button>
+    </div>
+    <div style="padding:8px 12px;background:#f5f3ff;border-bottom:1px solid #ddd6fe;">
+      <input type="password" id="gemini-custom-key" placeholder="Tùy chọn: Dán Gemini API Key để dùng Gemini 2.5..." style="font-size:12px;padding:6px 10px;" />
+    </div>
+    <div id="ai-chat-messages" class="ai-chat-history">
+      <div class="chat-msg ai">Xin chào! Tôi là Trợ lý AI của EduLMS Pro. Bạn cần giải thích bài học, soạn giáo án hay gỡ lỗi lập trình?</div>
+    </div>
+    <div class="ai-chat-input-bar">
+      <input type="text" id="ai-chat-input" placeholder="Nhập câu hỏi hoặc yêu cầu hỗ trợ..." />
+      <button type="button" id="ai-chat-send-btn" class="btn btn-ai"><i data-lucide="send"></i></button>
+    </div>
+  </aside>
+
+  <script src="app.js"></script>
+</body>
+</html>
